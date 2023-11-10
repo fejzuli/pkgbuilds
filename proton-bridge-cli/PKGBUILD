@@ -1,0 +1,36 @@
+# Maintainer: Merlin Attila Fejzuli <merlin@fejzuli.com>
+pkgname=proton-bridge-cli
+pkgver=3.6.1
+pkgrel=1
+pkgdesc="Use Proton Mail over IMAP/SMTP"
+arch=('x86_64')
+url="https://proton.me/mail/bridge"
+license=('GPL')
+depends=('glibc' 'glib2' 'libsecret')
+makedepends=('go')
+optdepends=()
+provides=()
+conflicts=()
+source=("$pkgname-$pkgver.tar.gz::https://github.com/ProtonMail/proton-bridge/archive/refs/tags/v$pkgver.tar.gz")
+noextract=("$pkgname-$pkgver.tar.gz")
+sha256sums=('2dd18b5460fff9c84edaf3eb7401357e8d311c3e63564db8c5adcb63e54877af')
+
+prepare() {
+    mkdir -p "$pkgname-$pkgver"
+    tar xf "$pkgname-$pkgver.tar.gz" --strip-components=1 --directory="$pkgname-$pkgver"
+}
+
+build() {
+	cd "$pkgname-$pkgver"
+    export CGO_CPPFLAGS="${CPPFLAGS}"
+    export CGO_CFLAGS="${CFLAGS}"
+    export CGO_CXXFLAGS="${CXXFLAGS}"
+    export CGO_LDFLAGS="${LDFLAGS}"
+    export GOFLAGS="-buildmode=pie -trimpath -ldflags=-linkmode=external -mod=readonly -modcacherw"
+	make build-nogui
+}
+
+package() {
+	cd "$pkgname-$pkgver"
+    install -Dm755 bridge "$pkgdir/usr/bin/proton-bridge"
+}
