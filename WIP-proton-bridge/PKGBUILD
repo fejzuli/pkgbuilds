@@ -1,0 +1,62 @@
+# Maintainer: Merlin Attila Fejzuli <merlin@fejzuli.com>
+pkgname=proton-bridge
+pkgver=3.6.1
+pkgrel=1
+pkgdesc="Use Proton Mail over IMAP/SMTP"
+arch=('x86_64')
+url="https://proton.me/mail/bridge"
+license=('GPL')
+depends=('brotli' 'dbus' 'double-conversion' 'fontconfig' 'freetype2' 'gcc-libs' 'gdk-pixbuf2' 'glib2' 'glibc' 'gtk3' 'harfbuzz' 'hicolor-icon-theme' 'icu' 'krb5' 'libb2' 'libcups' 'libdrm' 'libfbclient' 'libglvnd' 'libice' 'libinput' 'libjpeg-turbo' 'libpng' 'libproxy' 'libsecret' 'libsm' 'libx11' 'libxcb' 'libxkbcommon' 'libxkbcommon-x11' 'mariadb-libs' 'md4c' 'mtdev' 'openssl' 'pango' 'pcre2' 'postgresql-libs' 'qt6-base' 'qt6-declarative' 'qt6-svg' 'qt6-wayland' 'sqlite' 'systemd-libs' 'tslib' 'unixodbc' 'wayland' 'xcb-util-cursor' 'xcb-util-image' 'xcb-util-keysyms' 'xcb-util-renderutil' 'xcb-util-wm' 'zlib' 'zstd' )
+makedepends=('git' 'go' 'zip' 'unzip' 'cmake' 'ninja' 'python')
+optdepends=()
+provides=()
+conflicts=()
+replaces=()
+source=("$pkgname-$pkgver::git+https://github.com/protonmail/proton-bridge.git#tag=v$pkgver"
+        "git+https://github.com/microsoft/vcpkg.git"
+        "use-latest-libicu.patch"
+        "set-qt-dir.patch")
+sha256sums=('SKIP'
+            'SKIP'
+            '55757b43a254fee4f4dcd7f41fa52972f245a05f526fe366a31aeb150ef64391'
+            '3c9d724f6ac341ad82db0178183afd563dc57d529f3f74f384f791e254f22dcd')
+
+prepare() {
+    cd "$pkgname-$pkgver"
+    git submodule init
+    git config submodule.submodules/vcpkg.url "$srcdir/vcpkg"
+    git -c protocol.file.allow=always submodule update
+    patch -p1 -i "$srcdir/use-latest-libicu.patch"
+    patch -p1 -i "$srcdir/set-qt-dir.patch"
+}
+
+build() {
+    cd "$pkgname-$pkgver"
+    export CGO_CPPFLAGS="${CPPFLAGS}"
+    export CGO_CFLAGS="${CFLAGS}"
+    export CGO_CXXFLAGS="${CXXFLAGS}"
+    export CGO_LDFLAGS="${LDFLAGS}"
+    export GOFLAGS="-buildmode=pie -trimpath -ldflags=-linkmode=external -mod=readonly -modcacherw"
+    make build
+}
+
+package() {
+	cd "$pkgname-$pkgver/cmd/Desktop-Bridge/deploy/linux"
+    install -d "$pkgdir/usr/bin"
+    ln -s /usr/lib/protonmail/bridge/proton-bridge "$pkgdir/usr/bin/protonmail-bridge"
+    install -d "$pkgdir/usr/lib/protonmail/bridge"
+    install -t "$pkgdir/usr/lib/protonmail/bridge" \
+        bridge \
+        bridge-gui \
+        proton-bridge
+    cp -rt "$pkgdir/usr/lib/protonmail/bridge" \
+        lib \
+        plugins \
+        qml
+    install -D logo.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/protonmail-bridge.svg"
+    install -D proton-bridge.desktop "$pkgdir/usr/share/applications/protonmail-bridge.desktop"
+    install -d "$pkgdir/usr/share/doc/protonmail/bridge"
+    install -t "$pkgdir/usr/share/doc/protonmail/bridge" \
+        Changelog.md \
+        LICENSE
+}
