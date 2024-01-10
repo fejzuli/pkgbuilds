@@ -1,0 +1,44 @@
+# Maintainer: Merlin Attila Fejzuli <merlin@fejzuli.com>
+pkgname=neovim-nightly
+pkgver=0.10.0.dev.r2051.gee3d4f6b90
+pkgrel=1
+pkgdesc="Fork of Vim aiming to improve user experience, plugins, and GUIs"
+arch=('x86_64')
+url="https://neovim.io"
+license=('custom:neovim')
+depends=('libluv' 'tree-sitter' 'libvterm' 'bash' 'hicolor-icon-theme' 'unibilium' 'msgpack-c'
+         'libuv' 'luajit' 'gcc-libs' 'glibc' 'lua51-lpeg')
+makedepends=('git' 'ripgrep' 'cmake' 'ninja')
+provides=("${pkgname%-nightly}")
+conflicts=("${pkgname%-nightly}")
+source=("${pkgname%-nightly}::git+https://github.com/neovim/neovim#tag=nightly")
+md5sums=('SKIP')
+
+pkgver() {
+    cd "$srcdir/${pkgname%-nightly}"
+    vmajor="$(rg 'NVIM_VERSION_MAJOR ([0-9]+)' -Nor '$1' CMakeLists.txt)"
+    vminor="$(rg 'NVIM_VERSION_MINOR ([0-9]+)' -Nor '$1' CMakeLists.txt)"
+    vpatch="$(rg 'NVIM_VERSION_PATCH ([0-9]+)' -Nor '$1' CMakeLists.txt)"
+    vgit="$(git describe --first-parent --dirty --always | rg '^v[0-9]+\.[0-9]+\.[0-9]+-([0-9]+)-(.+$)' -or 'r$1.$2')"
+
+    printf "%s.%s.%s.dev.%s" "$vmajor" "$vminor" "$vpatch" "$vgit"
+}
+
+build() {
+	cd "$srcdir/${pkgname%-nightly}"
+    cmake -B build -G Ninja -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr
+    cmake --build build
+}
+
+check() {
+    cd "$srcdir/${pkgname%-nightly}"
+    ./build/bin/nvim --version
+    ./build/bin/nvim --headless -u NONE -i NONE -c ':quit'
+}
+
+package() {
+    cd "$srcdir/${pkgname%-nightly}"
+    DESTDIR="$pkgdir/" cmake --install build
+    install -Dm644 LICENSE.txt -t "${pkgdir}/usr/share/licenses/${pkgname}/"
+    rm -r $pkgdir/usr/lib
+}
